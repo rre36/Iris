@@ -8,6 +8,7 @@ import me.jellysquid.mods.sodium.client.gui.options.control.CyclingControl;
 import me.jellysquid.mods.sodium.client.gui.options.control.SliderControl;
 import me.jellysquid.mods.sodium.client.gui.options.storage.MinecraftOptionsStorage;
 import net.coderbot.iris.Iris;
+import net.coderbot.iris.colorspace.ColorBlindness;
 import net.coderbot.iris.colorspace.ColorSpace;
 import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gui.option.IrisVideoSettings;
@@ -44,8 +45,8 @@ public class IrisSodiumOptions {
 
     public static OptionImpl<Options, ColorSpace> createColorSpaceButton(MinecraftOptionsStorage vanillaOpts) {
         OptionImpl<Options, ColorSpace> colorSpace = OptionImpl.createBuilder(ColorSpace.class, vanillaOpts)
-                .setName(new TranslatableComponent("options.iris.colorSpace"))
-                .setTooltip(new TranslatableComponent("options.iris.colorSpace.sodium_tooltip"))
+                .setName(Component.translatable("options.iris.colorSpace"))
+                .setTooltip(Component.translatable("options.iris.colorSpace.sodium_tooltip"))
 				.setControl(option -> new CyclingControl<>(option, ColorSpace.class,
 				new Component[] { new TextComponent("SRGB"), new TextComponent("DCI_P3"), new TextComponent("Display P3"), new TextComponent("REC2020"), new TextComponent("Adobe RGB") }))
 				.setBinding((options, value) -> {
@@ -58,6 +59,54 @@ public class IrisSodiumOptions {
 						}
 					},
 					options -> IrisVideoSettings.colorSpace)
+                .setImpact(OptionImpact.LOW)
+                .setEnabled(true)
+                .build();
+
+        ((OptionImplExtended) colorSpace).iris$dynamicallyEnable(IrisRenderSystem::supportsCompute);
+
+        return colorSpace;
+    }
+
+    public static OptionImpl<Options, ColorBlindness> createColorBlindnessButton(MinecraftOptionsStorage vanillaOpts) {
+        OptionImpl<Options, ColorBlindness> colorSpace = OptionImpl.createBuilder(ColorBlindness.class, vanillaOpts)
+                .setName(Component.translatable("options.iris.colorBlindness"))
+                .setTooltip(Component.translatable("options.iris.colorBlindness.sodium_tooltip"))
+				.setControl(option -> new CyclingControl<>(option, ColorBlindness.class,
+				new Component[] { Component.literal("None"), Component.literal("Protanopia"), Component.literal("Deuteranopia"), Component.literal("Tritanopia") }))
+				.setBinding((options, value) -> {
+						IrisVideoSettings.colorBlindness = value;
+						IrisVideoSettings.colorBlindnessChanged();
+						try {
+							Iris.getIrisConfig().save();
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+					},
+					options -> IrisVideoSettings.colorBlindness)
+                .setImpact(OptionImpact.LOW)
+                .setEnabled(true)
+                .build();
+
+        ((OptionImplExtended) colorSpace).iris$dynamicallyEnable(IrisRenderSystem::supportsCompute);
+
+        return colorSpace;
+    }
+    public static OptionImpl<Options, Integer> createColorBlindnessIntensity(MinecraftOptionsStorage vanillaOpts) {
+        OptionImpl<Options, Integer> colorSpace = OptionImpl.createBuilder(int.class, vanillaOpts)
+                .setName(Component.translatable("options.iris.colorBlindnessIntensity"))
+                .setTooltip(Component.translatable("options.iris.colorBlindnessIntensity.sodium_tooltip"))
+				.setControl(option -> new SliderControl(option, 0, 65535, 5, (v) -> String.valueOf((float) Math.round((float) v / 65535.0f * 100) / 100)))
+				.setBinding((options, value) -> {
+						IrisVideoSettings.colorBlindnessIntensity = (float) value / 65535.0f;
+						IrisVideoSettings.colorBlindnessChanged();
+						try {
+							Iris.getIrisConfig().save();
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+					},
+					options -> (int) (IrisVideoSettings.colorBlindnessIntensity * 65535))
                 .setImpact(OptionImpact.LOW)
                 .setEnabled(true)
                 .build();

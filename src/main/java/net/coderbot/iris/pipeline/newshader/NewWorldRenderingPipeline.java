@@ -8,10 +8,8 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
-import net.coderbot.iris.Iris;
 import net.coderbot.iris.block_rendering.BlockMaterialMapping;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
-import net.coderbot.iris.colorspace.ColorSpace;
 import net.coderbot.iris.colorspace.ColorSpaceConverter;
 import net.coderbot.iris.features.FeatureFlags;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
@@ -31,6 +29,7 @@ import net.coderbot.iris.gl.program.ProgramSamplers;
 import net.coderbot.iris.gl.sampler.SamplerHolder;
 import net.coderbot.iris.gl.texture.DepthBufferFormat;
 import net.coderbot.iris.gl.texture.TextureType;
+import net.coderbot.iris.gui.option.IrisVideoSettings;
 import net.coderbot.iris.helpers.Tri;
 import net.coderbot.iris.mixin.GlStateManagerAccessor;
 import net.coderbot.iris.mixin.LevelRendererAccessor;
@@ -241,7 +240,7 @@ public class NewWorldRenderingPipeline implements WorldRenderingPipeline, CoreWo
 			forcedShadowRenderDistanceChunks = OptionalInt.empty();
 		}
 
-		colorSpaceConverter = new ColorSpaceConverter(main.getColorTextureId(), ColorSpace.DCI_P3, main.width, main.height);
+		colorSpaceConverter = new ColorSpaceConverter(main.getColorTextureId(), IrisVideoSettings.colorSpace, IrisVideoSettings.colorBlindness, IrisVideoSettings.colorBlindnessIntensity, main.width, main.height);
 
 		this.customUniforms = programSet.getPack().customUniforms.build(
 			holder -> CommonUniforms.addNonDynamicUniforms(holder, programSet.getPack().getIdMap(), programSet.getPackDirectives(), this.updateNotifier)
@@ -508,6 +507,11 @@ public class NewWorldRenderingPipeline implements WorldRenderingPipeline, CoreWo
 		if (hasRun) {
 			ComputeProgram.unbind();
 		}
+	}
+
+	@Override
+	public ColorSpaceConverter getColorSpaceConverter() {
+		return colorSpaceConverter;
 	}
 
 	private ComputeProgram[] createShadowComputes(ComputeSource[] compute, ProgramSet programSet) {
@@ -817,6 +821,21 @@ public class NewWorldRenderingPipeline implements WorldRenderingPipeline, CoreWo
 		this.shadowClearPassesFull = ClearPassCreator.createShadowClearPasses(shadowRenderTargets, true, shadowDirectives);
 	}
 
+	private int cachedMain, cachedWidth, cachedHeight;
+	@Override
+	public void beginGameRendering() {
+		RenderTarget main = Minecraft.getInstance().getMainRenderTarget();
+		int width = Minecraft.getInstance().getWindow().getWidth();
+		int height = Minecraft.getInstance().getWindow().getHeight();
+		if (cachedMain != main.getColorTextureId() || cachedWidth != width || cachedHeight != height) {
+			cachedMain = main.getColorTextureId();
+			cachedWidth = width;
+			cachedHeight = height;
+
+			colorSpaceConverter.changeMainRenderTarget(main.getColorTextureId(), width, height);
+		}
+	}
+
 	@Override
 	public void beginLevelRendering() {
 		isRenderingWorld = true;
@@ -877,7 +896,6 @@ public class NewWorldRenderingPipeline implements WorldRenderingPipeline, CoreWo
 			main.height, depthBufferFormat, packDirectives);
 
 		if (changed) {
-			colorSpaceConverter.changeMainRenderTarget(main.getColorTextureId(), main.width, main.height);
 			beginRenderer.recalculateSizes();
 			prepareRenderer.recalculateSizes();
 			deferredRenderer.recalculateSizes();
@@ -1179,6 +1197,11 @@ public class NewWorldRenderingPipeline implements WorldRenderingPipeline, CoreWo
 	@Override
 	public float getSunPathRotation() {
 		return sunPathRotation;
+	}
+
+	@Override
+	public void finalizeGameRendering() {
+		colorSpaceConverter.processColorBlindness();
 	}
 
 	protected AbstractTexture getWhitePixel() {

@@ -1,6 +1,8 @@
 package net.coderbot.iris.mixin;
 
 import net.coderbot.iris.Iris;
+import net.coderbot.iris.colorspace.ColorSpace;
+import net.coderbot.iris.gui.option.IrisVideoSettings;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.components.DebugScreenOverlay;
 import org.spongepowered.asm.mixin.Mixin;
@@ -44,6 +46,10 @@ public abstract class MixinDebugScreenOverlay {
 		messages.add("");
 		messages.add("[" + Iris.MODNAME + "] Version: " + Iris.getFormattedVersion());
 		messages.add("");
+
+		if (IrisVideoSettings.colorSpace != ColorSpace.SRGB) {
+			messages.add("[" + Iris.MODNAME + "] Color Space: " + IrisVideoSettings.colorSpace.name());
+		}
 
 		if (Iris.getIrisConfig().areShadersEnabled()) {
 			messages.add("[" + Iris.MODNAME + "] Shaderpack: " + Iris.getCurrentPackName() + (Iris.isFallback() ? " (fallback)" : ""));

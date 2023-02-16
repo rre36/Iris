@@ -48,6 +48,16 @@ public class MixinGameRenderer {
 		Iris.logger.info("OS: " + System.getProperty("os.name") + " (" + System.getProperty("os.version") + ")");
 	}
 
+	@Inject(method = "render", at = @At("HEAD"))
+	private void iris$renderFirst(float pGameRenderer0, long pLong1, boolean pBoolean2, CallbackInfo ci) {
+		Iris.getPipelineManager().getPipeline().ifPresent(WorldRenderingPipeline::beginGameRendering);
+	}
+
+	@Inject(method = "render", at = @At("TAIL"))
+	private void iris$renderLast(float pGameRenderer0, long pLong1, boolean pBoolean2, CallbackInfo ci) {
+		Iris.getPipelineManager().getPipeline().ifPresent(WorldRenderingPipeline::finalizeGameRendering);
+	}
+
 	@Redirect(method = "renderItemInHand", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;renderHandsWithItems(FLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource$BufferSource;Lnet/minecraft/client/player/LocalPlayer;I)V"))
 	private void iris$disableVanillaHandRendering(ItemInHandRenderer itemInHandRenderer, float tickDelta, PoseStack poseStack, BufferSource bufferSource, LocalPlayer localPlayer, int light) {
 		if (IrisApi.getInstance().isShaderPackInUse()) {

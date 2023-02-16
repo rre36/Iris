@@ -11,6 +11,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.block_rendering.BlockMaterialMapping;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.coderbot.iris.colorspace.ColorSpaceConverter;
 import net.coderbot.iris.features.FeatureFlags;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gbuffer_overrides.matching.ProgramTable;
@@ -566,6 +567,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	@Override
 	public float getSunPathRotation() {
 		return sunPathRotation;
+	}
+
+	@Override
+	public void finalizeGameRendering() {
+
 	}
 
 	private RenderCondition getCondition(WorldRenderingPhase phase) {
@@ -1189,12 +1195,22 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		return forcedShadowRenderDistanceChunks;
 	}
 
+	@Override
+	public ColorSpaceConverter getColorSpaceConverter() {
+		return null;
+	}
+
 	// TODO: better way to avoid this global state?
 	private boolean isRenderingWorld = false;
 	private boolean isRenderingFullScreenPass = false;
 
 	@Override
 	public void onShadowBufferChange() {
+
+	}
+
+	@Override
+	public void beginGameRendering() {
 
 	}
 

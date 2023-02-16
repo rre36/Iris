@@ -1,6 +1,7 @@
 package net.coderbot.iris.config;
 
 import net.coderbot.iris.Iris;
+import net.coderbot.iris.colorspace.ColorBlindness;
 import net.coderbot.iris.colorspace.ColorSpace;
 import net.coderbot.iris.gui.option.IrisVideoSettings;
 
@@ -141,6 +142,8 @@ public class IrisConfig {
 		try {
 			IrisVideoSettings.shadowDistance = Integer.parseInt(properties.getProperty("maxShadowRenderDistance", "32"));
 			IrisVideoSettings.colorSpace = ColorSpace.valueOf(properties.getProperty("colorSpace", "SRGB"));
+			IrisVideoSettings.colorBlindness = ColorBlindness.valueOf(properties.getProperty("colorBlindness", "NONE"));
+			IrisVideoSettings.colorBlindnessIntensity = Float.parseFloat(properties.getProperty("colorBlindnessIntensity", "1.0f"));
 		} catch (NumberFormatException e) {
 			Iris.logger.error("Shadow distance setting reset; value is invalid.");
 			IrisVideoSettings.shadowDistance = 32;
@@ -148,6 +151,8 @@ public class IrisConfig {
 		} catch (IllegalArgumentException e) {
 			Iris.logger.error("Color space setting reset; value is invalid.");
 			IrisVideoSettings.colorSpace = ColorSpace.SRGB;
+			IrisVideoSettings.colorBlindness = ColorBlindness.NONE;
+			IrisVideoSettings.colorBlindnessIntensity = 1.0f;
 			save();
 		}
 
@@ -171,6 +176,8 @@ public class IrisConfig {
 		properties.setProperty("disableUpdateMessage", disableUpdateMessage ? "true" : "false");
 		properties.setProperty("maxShadowRenderDistance", String.valueOf(IrisVideoSettings.shadowDistance));
 		properties.setProperty("colorSpace", IrisVideoSettings.colorSpace.name());
+		properties.setProperty("colorBlindness", IrisVideoSettings.colorBlindness.name());
+		properties.setProperty("colorBlindnessIntensity", String.valueOf(IrisVideoSettings.colorBlindnessIntensity));
 		// NB: This uses ISO-8859-1 with unicode escapes as the encoding
 		try (OutputStream os = Files.newOutputStream(propertiesPath)) {
 			properties.store(os, COMMENT);

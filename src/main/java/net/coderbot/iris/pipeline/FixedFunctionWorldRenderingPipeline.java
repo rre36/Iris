@@ -1,14 +1,17 @@
 package net.coderbot.iris.pipeline;
 
+import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.platform.GlStateManager;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.coderbot.iris.colorspace.ColorSpaceConverter;
 import net.coderbot.iris.features.FeatureFlags;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.gbuffer_overrides.state.RenderTargetStateListener;
 import net.coderbot.iris.gl.texture.TextureType;
+import net.coderbot.iris.gui.option.IrisVideoSettings;
 import net.coderbot.iris.helpers.Tri;
 import net.coderbot.iris.mixin.LevelRendererAccessor;
 import net.coderbot.iris.shaderpack.CloudSetting;
@@ -22,12 +25,25 @@ import java.util.List;
 import java.util.OptionalInt;
 
 public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeline {
+	private ColorSpaceConverter colorSpaceConverter;
+	private int cachedMain, cachedWidth, cachedHeight;
 	public FixedFunctionWorldRenderingPipeline() {
 		BlockRenderingSettings.INSTANCE.setDisableDirectionalShading(shouldDisableDirectionalShading());
 		BlockRenderingSettings.INSTANCE.setUseSeparateAo(false);
 		BlockRenderingSettings.INSTANCE.setAmbientOcclusionLevel(1.0f);
 		BlockRenderingSettings.INSTANCE.setUseExtendedVertexFormat(false);
 		BlockRenderingSettings.INSTANCE.setBlockTypeIds(null);
+		RenderTarget main = Minecraft.getInstance().getMainRenderTarget();
+
+		if (main == null) {
+			return;
+		}
+		colorSpaceConverter = new ColorSpaceConverter(main.getColorTextureId(), IrisVideoSettings.colorSpace, IrisVideoSettings.colorBlindness, IrisVideoSettings.colorBlindnessIntensity, main.width, main.height);
+		this.cachedMain = main.getColorTextureId();
+		int width = Minecraft.getInstance().getWindow().getWidth();
+		int height = Minecraft.getInstance().getWindow().getHeight();
+		this.cachedWidth = width;
+		this.cachedHeight = height;
 	}
 
 	@Override
@@ -36,9 +52,28 @@ public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeli
 	}
 
 	@Override
+	public void beginGameRendering() {
+		RenderTarget main = Minecraft.getInstance().getMainRenderTarget();
+		int width = Minecraft.getInstance().getWindow().getWidth();
+		int height = Minecraft.getInstance().getWindow().getHeight();
+		if (cachedMain != main.getColorTextureId() || cachedWidth != width || cachedHeight != height) {
+			cachedMain = main.getColorTextureId();
+			cachedWidth = width;
+			cachedHeight = height;
+
+			if (colorSpaceConverter != null) {
+				colorSpaceConverter.changeMainRenderTarget(main.getColorTextureId(), width, height);
+			} else {
+				colorSpaceConverter = new ColorSpaceConverter(main.getColorTextureId(), IrisVideoSettings.colorSpace, IrisVideoSettings.colorBlindness, IrisVideoSettings.colorBlindnessIntensity, cachedWidth, cachedHeight);
+			}
+		}
+	}
+
+	@Override
 	public void beginLevelRendering() {
+		RenderTarget main = Minecraft.getInstance().getMainRenderTarget();
 		// Use the default Minecraft framebuffer and ensure that no programs are in use
-		Minecraft.getInstance().getMainRenderTarget().bindWrite(true);
+		main.bindWrite(true);
 		GlStateManager._glUseProgram(0);
 	}
 
@@ -55,6 +90,11 @@ public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeli
 	@Override
 	public OptionalInt getForcedShadowRenderDistanceChunksForDisplay() {
 		return OptionalInt.empty();
+	}
+
+	@Override
+	public ColorSpaceConverter getColorSpaceConverter() {
+		return colorSpaceConverter;
 	}
 
 	@Override
@@ -134,7 +174,12 @@ public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeli
 
 	@Override
 	public void finalizeLevelRendering() {
-		// stub: nothing to do here
+		colorSpaceConverter.processColorSpace();
+	}
+
+	@Override
+	public void finalizeGameRendering() {
+		colorSpaceConverter.processColorBlindness();
 	}
 
 	@Override
