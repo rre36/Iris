@@ -2,6 +2,9 @@
 
 // This will be changed to 330 if it's in fragment.
 
+PLACEHOLDER2
+// Don't remove the above line!!! That's part of the fragment check.
+
 #ifndef FRAGMENT
 layout(local_size_x = 8, local_size_y = 8) in;
 #endif

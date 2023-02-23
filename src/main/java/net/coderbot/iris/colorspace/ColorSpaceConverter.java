@@ -7,6 +7,7 @@ import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import net.coderbot.iris.gl.program.ComputeProgram;
+import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.gl.program.ProgramBuilder;
 import net.coderbot.iris.gl.texture.InternalTextureFormat;
 import net.coderbot.iris.postprocess.FullScreenQuadRenderer;
@@ -87,11 +88,12 @@ public class ColorSpaceConverter {
 			String source = new String(IOUtils.toByteArray(Objects.requireNonNull(getClass().getResourceAsStream("/Iris_ColourManagement.csh"))), StandardCharsets.UTF_8);
 
 			fragment = true;
+			source = source.replace("PLACEHOLDER2", "#define FRAGMENT");
 			source = source.replace("PLACEHOLDER", colorSpace.name().toUpperCase(Locale.US));
 			source = source.replace("430 core", "330 core");
-			source = source.replace("PLACEHOLDER2", "#define FRAGMENT");
-			source = JcppProcessor.glslPreprocessSource(source, Collections.EMPTY_LIST);
 			Iris.logger.warn(source);
+
+			source = JcppProcessor.glslPreprocessSource(source, Collections.EMPTY_LIST);
 
 			String vertex = """
 				#version 150 core
@@ -104,7 +106,7 @@ public class ColorSpaceConverter {
 				void main() {
 					gl_Position = vec4(Position.xy * 2.0 - 1.0, 0.0, 1.0);
 					texCoord = UV0;
-				]
+				}
 			""";
 			ProgramBuilder builder = ProgramBuilder.begin("colorSpace", vertex, null, source, ImmutableSet.of());
 			builder.addDefaultSampler(() -> target, "mainImage");
@@ -155,6 +157,7 @@ public class ColorSpaceConverter {
 	}
 
 	public void recreateColorBlindnessShader(ColorBlindness colorBlindness, float colorBlindnessIntensity) {
+		if (!IrisRenderSystem.supportsCompute()) return;
 		try {
 			if (colorBlindnessProgram != null) {
 				colorBlindnessProgram.destroy();
