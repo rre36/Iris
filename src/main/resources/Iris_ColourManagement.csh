@@ -1,5 +1,10 @@
 #version 430 core
+
+// This will be changed to 330 if it's in fragment.
+
+#ifndef FRAGMENT
 layout(local_size_x = 8, local_size_y = 8) in;
+#endif
 
 #define SRGB 0
 #define DCI_P3 1
@@ -9,7 +14,13 @@ layout(local_size_x = 8, local_size_y = 8) in;
 
 #define CURRENT_COLOR_SPACE PLACEHOLDER
 
+#ifdef FRAGMENT
+uniform sampler2D mainImage;
+in vec2 texCoord;
+layout (location = 0) out vec4 imageOut;
+#else
 layout(rgba8) uniform image2D mainImage;
+#endif
 
 // https://en.wikipedia.org/wiki/Rec._709#Transfer_characteristics
 vec3 EOTF_Curve(vec3 LinearCV, const float LinearFactor, const float Exponent, const float Alpha, const float Beta) {
@@ -103,8 +114,12 @@ const mat3 sRGB_to_AdobeRGB = sRGB_XYZ * XYZ_AdobeRGB;
 
 void main() {
     #if CURRENT_COLOR_SPACE != SRGB
+    #ifdef FRAGMENT
+    vec3 SourceColor = texture(mainImage, texCoord).rgb;
+    #else
     ivec2 PixelIndex = ivec2(gl_GlobalInvocationID.xy);
     vec3 SourceColor = imageLoad(mainImage, PixelIndex).rgb;
+    #endif
     SourceColor = InverseEOTF_IEC61966(SourceColor);
 
     vec3 TargetColor = SourceColor;
@@ -130,6 +145,10 @@ void main() {
     TargetColor = EOTF_Adobe(TargetColor);
 
     #endif
+    #ifdef FRAGMENT
+    imageOut = vec4(TargetColor, 1.0);
+    #else
     imageStore(mainImage, PixelIndex, vec4(TargetColor, 1.0));
+    #endif
     #endif
 }

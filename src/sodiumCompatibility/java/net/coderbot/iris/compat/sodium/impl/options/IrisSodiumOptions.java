@@ -62,7 +62,6 @@ public class IrisSodiumOptions {
                 .setEnabled(true)
                 .build();
 
-        ((OptionImplExtended) colorSpace).iris$dynamicallyEnable(IrisRenderSystem::supportsCompute);
 
         return colorSpace;
     }
